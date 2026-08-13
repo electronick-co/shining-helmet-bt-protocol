@@ -216,3 +216,27 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---------------------------------------------------------------------------
+# Reverse-engineering artifacts — DELIBERATELY NOT PUBLISHED
+# ---------------------------------------------------------------------------
+# Vendor app binaries + decompiled sources. Redistributing the "Shining Display"
+# APK, its DEX/Hermes decompilation, and libjl_ota_auth.so would infringe the
+# vendor's copyright. Findings derived from them live in PROTOCOL.md instead.
+apk/
+
+# Portable JDK + jadx used for decompilation (third-party binaries, ~hundreds of MB).
+tools/
+
+# Android bug report — contains device logs and personal data.
+bugreport*.zip
+bugreport-*/
+
+# Raw HCI snoop logs pulled off the phone: capture whole-radio BT traffic,
+# not just the helmet (other paired devices, addresses).
+FS/
+*.log
+btsnoop_hci*
+
+# Local scratch
+.pytest_cache/
