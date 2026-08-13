@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shining-helmet"
+version = "0.1.0"
+description = "Control SLShining / 'Shining Display' BLE LED-matrix helmets (48x12) without the vendor app"
+readme = "README_LIB.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "nick", email = "nick@dsd.dev" }]
+keywords = ["bluetooth", "ble", "led", "matrix", "helmet", "jieli", "shining-display"]
+
+dependencies = [
+    "bleak>=0.21",   # cross-platform BLE: Windows/macOS + Linux/BlueZ (Raspberry Pi)
+]
+
+[project.optional-dependencies]
+# Image upload + rendering (GIF/PNG -> 48x12). Optional so the core stays light.
+images = ["pillow>=10"]
+dev = ["pytest>=7", "pillow>=10"]
+
+[project.scripts]
+shining-helmet = "shining_helmet.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/REPLACE_ME/shining-helmet"   # TODO: set when published
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["shining_helmet*"]
