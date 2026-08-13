@@ -59,6 +59,46 @@ not acks, are the limit) but avoids the ~0.5 s ack wait on the last frame.
 - **Stored file cap = 40960 B** (10×4096). 40961 is rejected at block 1 with
   status 0. Byte cap, not frame cap. Upload ≈2.4 KB/s → a full file takes ~16 s.
 
+## Raspberry Pi (Linux/BlueZ) port (2026-08-12)
+First run on the Pi found a real cross-platform bug, now fixed in
+`client.py:connect()`/`_negotiate_mtu()`: on BlueZ, `BleakClient.mtu_size`
+silently stays at the connection default (23) unless something forces a real
+ATT MTU exchange first — the PC testing so far was apparently on a backend
+(Windows/macOS) that negotiates automatically, so this never showed up before.
+Without the exchange, every multi-chunk write (image upload, screencast)
+chunked at 20 bytes instead of ~509 — a **~25x** increase in BLE round-trips.
+Symptom was dramatic: `live_effects.py plasma --seconds 8` took **88s real
+time** instead of ~8-12s. Fix: `connect()` now calls the bleak BlueZ backend's
+private `_acquire_mtu()` right after connecting (before `start_notify`), which
+reliably yields `mtu_size=512` on this helmet; confirmed by timing the same
+plasma run at **12.4s** after the fix. Verified via `upload_test.py` too
+(`MTU: 512` in its printed diagnostics). Note: the *other*, more "official"-
+looking fix — reading `characteristic.max_write_without_response_size`
+instead of `mtu_size` — turned out to be a dead end here: that BlueZ D-Bus
+property is a stale snapshot from connection time and does **not** update
+after `_acquire_mtu()` runs, so it kept reporting 20 even once the real MTU
+was 512. Don't try that route again without re-verifying on hardware.
+Bluetooth stack on this Pi: BlueZ 5.82, onboard UART HCI (`hci0`,
+`88:A2:9E:E9:DC:8B`), no `sudo`/`rfkill` issues, `bleak` needed a venv
+(`.venv/`) due to Debian trixie's PEP 668 externally-managed-environment
+restriction — `pip install -e ".[images]"` inside it; `numpy` (used by
+`live_effects.py` but not in `pyproject.toml`) had to be installed separately.
+
+## Physical mounting orientation — flip=1 now baked in (2026-08-12)
+As actually mounted on the helmet, the panel's native `flip=0` state renders
+**upside-down** (confirmed live with `examples/upload_test.py`'s corner-marker
+test pattern: flip=0 → full 180° rotation, flip=1 → upright). This is a
+mounting fact about this physical unit, not a protocol default, so it's
+applied automatically rather than left as a manual step: `ShiningHelmet.__init__`
+now takes `flip: Optional[int] = C.DEFAULT_FLIP` (`constants.DEFAULT_FLIP = 1`),
+and `connect()` sends it right after MTU negotiation, before returning. Pass
+`flip=None` (or `flip=0`) to `ShiningHelmet()` to skip/override — e.g. if a
+different physically-mounted unit needs the untouched state. Also confirmed:
+flip is a **device-persisted** setting — it survived a full disconnect/
+reconnect cycle without us resending it, so this only needed fixing once in
+code, not per-session (worth re-checking after a full power cycle, unverified
+whether it survives that).
+
 ## Open work — the interaction-prompt show (2026-07-25)
 `examples/live_prompts.py` (matrix rain + "ASK ME ANYTHING" / "I NEED A HUG"
 prompts) runs live and saves. Currently on the helmet: `matrix_rain.gif`

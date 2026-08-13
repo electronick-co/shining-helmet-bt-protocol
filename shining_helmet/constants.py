@@ -23,6 +23,14 @@ CHAR_AUTH_NOTIFY = _u16("ae02")
 # Advertised device name prefix (the captured unit was "SCR-DEFC35")
 DEVICE_NAME_PREFIX = "SCR-"
 
+# Default flip direction applied on connect (see ShiningHelmet's `flip` param).
+# VERIFIED LIVE 2026-08-12: as mounted on the actual helmet (BurningManHelmet26),
+# the panel's native flip=0 state renders upside-down; flip=1 (180deg) is
+# upright. This is a physical-mounting fact about this specific unit, not a
+# protocol default — pass flip=None or flip=0 to ShiningHelmet() if a
+# differently-mounted panel needs the untouched state instead.
+DEFAULT_FLIP = 1
+
 # ---- Command framing ----
 # Frame = [len, 0x00, cmd, sub, args...]  (len = total byte length, low byte)
 FRAME_PAD = 0x00

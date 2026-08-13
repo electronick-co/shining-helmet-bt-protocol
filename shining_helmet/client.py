@@ -31,13 +31,18 @@ log = logging.getLogger("shining_helmet")
 
 class ShiningHelmet:
     def __init__(self, address: Optional[str] = None, *, name_prefix: str = C.DEVICE_NAME_PREFIX,
-                 timeout: float = 20.0, inter_pixel_delay: float = 0.0):
+                 timeout: float = 20.0, inter_pixel_delay: float = 0.0,
+                 flip: Optional[int] = C.DEFAULT_FLIP):
         """address: BLE MAC/UUID. If None, scan for a device whose name starts
-        with `name_prefix`.  inter_pixel_delay throttles per-pixel draws (s)."""
+        with `name_prefix`.  inter_pixel_delay throttles per-pixel draws (s).
+        flip: direction sent once on connect to correct for physical mounting
+        (see C.DEFAULT_FLIP); pass None to leave the device's current flip
+        state untouched."""
         self.address = address
         self.name_prefix = name_prefix
         self.timeout = timeout
         self.inter_pixel_delay = inter_pixel_delay
+        self.default_flip = flip
         self._client: Optional[BleakClient] = None
         self._seq = 0
         self._notify_waiters: list[tuple] = []  # (future, predicate|None)
@@ -65,11 +70,34 @@ class ShiningHelmet:
             log.info("auto-selected %s", matches[0])
         self._client = BleakClient(self.address, timeout=self.timeout)
         await self._client.connect()
+        await self._negotiate_mtu()
         await self._client.start_notify(C.CHAR_NOTIFY, self._on_notify)
-        log.info("connected to %s", self.address)
+        log.info("connected to %s (mtu=%d)", self.address, getattr(self._client, "mtu_size", 0))
+        if self.default_flip is not None:
+            await self.flip(self.default_flip)
         # NOTE: the display channel needs NO auth (VERIFIED). The JieLi RCSP auth
         # on SERVICE_AUTH is only required for OTA firmware updates -> see auth.py.
         return self
+
+    async def _negotiate_mtu(self):
+        """Force a real ATT MTU exchange on Linux/BlueZ.
+
+        `BleakClient.mtu_size` reads back 23 (the connection default) on
+        BlueZ until something has actually triggered an MTU exchange over
+        this connection — bleak's own docstring on `mtu_size` points at the
+        private `_acquire_mtu()` backend method as the workaround. Without
+        this, multi-chunk writes (image upload, screencast) fall back to
+        20-byte chunks — ~25x more BLE round-trips than the ~500-byte chunks
+        a negotiated MTU allows. No-op on backends that don't have it
+        (CoreBluetooth/WinRT negotiate automatically and expose it directly).
+        """
+        acquire = getattr(self._client._backend, "_acquire_mtu", None)
+        if acquire is None:
+            return
+        try:
+            await acquire()
+        except Exception:
+            log.debug("MTU negotiation failed, falling back to default", exc_info=True)
 
     async def disconnect(self):
         if self._client and self._client.is_connected:
