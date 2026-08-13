@@ -104,7 +104,7 @@ class ShiningHelmet:
 
     async def _wait_notify(self, timeout: float = 2.0, pred=None) -> Optional[bytes]:
         """Wait for the next notification (optionally one matching `pred`)."""
-        fut: asyncio.Future = asyncio.get_event_loop().create_future()
+        fut: asyncio.Future = asyncio.get_running_loop().create_future()
         entry = (fut, pred)
         self._notify_waiters.append(entry)
         try:
@@ -137,6 +137,11 @@ class ShiningHelmet:
 
     async def graffiti(self, open_: bool):
         await self._write(protocol.graffiti(open_), response=True)
+
+    async def reset(self):
+        """Restore the factory animations, clearing any uploaded image.
+        VERIFIED live: acks `05 00 03 80 01`, connection stays up, no reboot."""
+        await self._write(protocol.reset(), response=True)
 
     def reset_seq(self):
         self._seq = 0
@@ -280,24 +285,30 @@ class ShiningHelmet:
                      on_frame=None):
         """Live-play a sequence of frames via the screencast path.
 
-        `frames` is an iterable of PIL.Image (any size — resized to 48x12) or a
-        callable producing them. Opens graffiti mode (so frames persist between
+        `frames` is any iterable of PIL.Image (any size — resized to 48x12),
+        including a generator. Opens graffiti mode (so frames persist between
         pushes), then screencasts each frame, pacing to `fps`. With wait_ack the
         device gates at ~7.7 fps; set wait_ack=False to push faster (may drop).
 
-        `loops` repeats a materialized sequence (ignored for one-shot generators).
+        `loops` replays the sequence, which requires holding every frame in
+        memory — so it is only materialized when loops > 1. At the default
+        loops=1 a generator is consumed lazily, which is what makes streaming an
+        ENDLESS generator (a live effect, an audio-reactive source) work:
+        materializing one would never return.
+
         Returns the number of frames sent.
         """
-        frame_list = list(frames)
+        if loops > 1:
+            frames = list(frames)      # replaying needs the frames kept around
         interval = 1.0 / fps if fps > 0 else 0.0
         sent = 0
         if open_graffiti:
             await self.graffiti(True)
             await asyncio.sleep(0.3)
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             for _ in range(max(1, loops)):
-                for i, fr in enumerate(frame_list):
+                for i, fr in enumerate(frames):
                     t0 = loop.time()
                     await self.screencast(fr, wait_ack=wait_ack, colors=colors)
                     sent += 1
