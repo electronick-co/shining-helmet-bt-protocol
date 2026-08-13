@@ -101,9 +101,16 @@ def encode_gif_sequence(frames, *, fps: float = 10.0, colors: int = 8,
 
     `colors` quantizes each frame (8 keeps GIFs small; 0 = full color).
 
+    NOTE on `collapse`: Pillow's GIF writer ALREADY merges identical consecutive
+    frames and sums their durations, unconditionally — `optimize=` and
+    `disposal=` do not disable it. So `collapse=False` produces byte-identical
+    output and is not an escape hatch; it only skips doing the same work here
+    first. Producing genuinely repeated frames would require making them differ.
+
     TODO(verify:gif-frame-delays): the stored file keeps the per-frame delays,
     but it is not yet eyeballed whether the panel honors them or re-times every
-    frame equally. If it re-times, pass collapse=False.
+    frame equally. If it re-times, the fix is to render at a uniform delay and
+    repeat *slightly differing* frames — not to pass collapse=False.
     """
     _require_pil()
     import io

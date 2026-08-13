@@ -76,6 +76,13 @@ prompts) runs live and saves. Currently on the helmet: `matrix_rain.gif`
    ghosts, that's a device property to design around, not a renderer bug.
 2. `TODO(verify:gif-frame-delays)` — does the panel honor per-frame GIF delays?
    `encode_gif_sequence(collapse=True)` counts on it to fit long shows.
+   **Correction (2026-08-12):** the old fallback advice "if it re-times, pass
+   collapse=False" is impossible. Pillow's GIF writer merges identical
+   consecutive frames and sums their durations on its own, unconditionally —
+   `optimize=`/`disposal=` don't disable it — so `collapse=False` returns
+   byte-identical output (pinned by `tests/test_images.py`). If the panel turns
+   out to re-time frames, the real fix is a uniform delay with *slightly
+   differing* repeated frames.
 3. Rain loop seam: columns jump back to frame-0 positions each loop. Seamless
    loop would need the rain state to match at frame 0 and frame N.
 4. Rain was retuned 2026-07-25 after it read as slow: speed is now **px/frame**
