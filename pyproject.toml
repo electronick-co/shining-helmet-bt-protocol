@@ -1,16 +1,32 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]   # >=77 for SPDX `license` + `license-files`
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "shining-helmet"
-version = "0.1.0"
+version = "0.2.0"
 description = "Control SLShining / 'Shining Display' BLE LED-matrix helmets (48x12) without the vendor app"
-readme = "README_LIB.md"
-requires-python = ">=3.9"
-license = { text = "MIT" }
-authors = [{ name = "nick", email = "nick@dsd.dev" }]
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Nick Velasquez", email = "nick@dsd.dev" }]
 keywords = ["bluetooth", "ble", "led", "matrix", "helmet", "jieli", "shining-display"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: System :: Hardware",
+    "Typing :: Typed",
+]
 
 dependencies = [
     "bleak>=0.21",   # cross-platform BLE: Windows/macOS + Linux/BlueZ (Raspberry Pi)
@@ -19,14 +35,24 @@ dependencies = [
 [project.optional-dependencies]
 # Image upload + rendering (GIF/PNG -> 48x12). Optional so the core stays light.
 images = ["pillow>=10"]
+# MP4/MOV playback via images.iter_mp4_frames.
+video = ["imageio>=2.31", "imageio-ffmpeg>=0.4"]
 dev = ["pytest>=7", "pillow>=10"]
 
 [project.scripts]
 shining-helmet = "shining_helmet.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/REPLACE_ME/shining-helmet"   # TODO: set when published
+Homepage = "https://github.com/electronick-co/shining-helmet-bt-protocol"
+Repository = "https://github.com/electronick-co/shining-helmet-bt-protocol"
+Issues = "https://github.com/electronick-co/shining-helmet-bt-protocol/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["shining_helmet*"]
+
+[tool.setuptools.package-data]
+shining_helmet = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
